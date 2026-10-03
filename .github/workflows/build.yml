@@ -1,0 +1,39 @@
+name: Build Unsigned IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build unsigned archive
+        run: |
+          xcodebuild             -project DoThanhDat.xcodeproj             -scheme DoThanhDat             -configuration Release             -sdk iphoneos             -archivePath "$RUNNER_TEMP/DoThanhDat.xcarchive"             CODE_SIGNING_ALLOWED=NO             CODE_SIGNING_REQUIRED=NO             archive
+
+      - name: Create IPA
+        run: |
+          set -e
+          mkdir -p "$RUNNER_TEMP/ipa/Payload"
+          cp -R "$RUNNER_TEMP/DoThanhDat.xcarchive/Products/Applications/DoThanhDat.app" "$RUNNER_TEMP/ipa/Payload/"
+          cd "$RUNNER_TEMP/ipa"
+          zip -r "$RUNNER_TEMP/DoThanhDat-unsigned.ipa" Payload
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: DoThanhDat-unsigned-IPA
+          path: ${{ runner.temp }}/DoThanhDat-unsigned.ipa
